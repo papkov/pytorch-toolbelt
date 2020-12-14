@@ -237,7 +237,7 @@ class ImageSlicer:
             # Suppose channel last
             shape += (image.shape[-1],)
         tile = np.zeros(shape, dtype=image.dtype)
-        tile[ty0:ty1, tx0:tx1] = image[ix0:ix1, iy0:iy1]
+        tile[ty0:ty1, tx0:tx1] = image[iy0:iy1, ix0:ix1]
         return tile
 
     @property
@@ -297,7 +297,7 @@ class ImageSlicer:
             tile_size = self.tile_size
         w, _, _ = compute_pyramid_patch_weight_loss(*tile_size)
         # quantize weight for memory efficiency
-        n_steps = min(64, min(tile_size) // 2)  # TODO calculate not to exceed 255 in uint8 anyhow (even with step 1)
+        n_steps = min(63, min(tile_size) // 2)  # TODO calculate not to exceed 255 in uint8 anyhow (even with step 1)
         w = ((w - np.min(w)) / np.max(w) * n_steps + 1).astype(np.uint8)
         return w
 
