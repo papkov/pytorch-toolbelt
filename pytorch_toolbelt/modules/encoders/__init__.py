@@ -5,14 +5,14 @@ Encodes listed here provides easy way to swap backbone of classification/segment
 from .common import *
 from .densenet import *
 from .efficientnet import *
+from .hourglass import *
 from .hrnet import *
 from .inception import *
 from .mobilenet import *
 from .resnet import *
 from .seresnet import *
 from .squeezenet import *
+from .timm import *
 from .unet import *
 from .wide_resnet import *
 from .xresnet import *
-from .hourglass import *
-from .timm import *

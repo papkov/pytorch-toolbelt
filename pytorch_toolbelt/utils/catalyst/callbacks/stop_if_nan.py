@@ -1,9 +1,9 @@
 import math
-from typing import List, Optional, Union, Any
+from typing import Any, List, Optional, Union
 
-import torch
 import numpy as np
-from catalyst.dl import IRunner, Callback, CallbackOrder
+import torch
+from catalyst.dl import Callback, CallbackOrder, IRunner
 
 __all__ = ["StopIfNanCallback"]
 

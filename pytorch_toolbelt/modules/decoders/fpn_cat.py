@@ -1,12 +1,12 @@
 from typing import List, Union
 
 import torch
-from torch import nn, Tensor
+from torch import Tensor, nn
 
-from .common import SegmentationDecoderModule
 from .. import conv1x1
 from ..activations import ABN
-from ..fpn import FPNContextBlock, FPNBottleneckBlock
+from ..fpn import FPNBottleneckBlock, FPNContextBlock
+from .common import SegmentationDecoderModule
 
 __all__ = ["FPNCatDecoderBlock", "FPNCatDecoder"]
 

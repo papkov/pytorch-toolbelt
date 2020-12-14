@@ -1,11 +1,12 @@
 import pytest
+import torch
+from torch import nn
+
 import pytorch_toolbelt.modules.decoders as D
 import pytorch_toolbelt.modules.encoders as E
-import torch
 from pytorch_toolbelt.modules import FPNFuse
-from pytorch_toolbelt.modules.decoders import FPNSumDecoder, FPNCatDecoder
+from pytorch_toolbelt.modules.decoders import FPNCatDecoder, FPNSumDecoder
 from pytorch_toolbelt.utils.torch_utils import count_parameters
-from torch import nn
 
 skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA is not available")
 

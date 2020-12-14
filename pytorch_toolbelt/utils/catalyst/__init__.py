@@ -1,14 +1,14 @@
 from __future__ import absolute_import
 
-from .criterions import *
+from catalyst.registry import CRITERION, MODULE, Registry
+
 from .callbacks import *
+from .criterions import *
+from .loss_adapter import *
 from .metrics import *
 from .opl import *
-from .visualization import *
 from .utils import *
-from .loss_adapter import *
-
-from catalyst.registry import MODULE, Registry, CRITERION
+from .visualization import *
 
 
 def _register_modules(r: Registry):

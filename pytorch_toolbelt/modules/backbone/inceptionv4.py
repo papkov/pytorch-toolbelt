@@ -1,7 +1,7 @@
 # Orignal source
 # https://github.com/Cadene/pretrained-models.pytorch/blob/master/pretrainedmodels/models/inceptionv4.py
 
-from __future__ import print_function, division, absolute_import
+from __future__ import absolute_import, division, print_function
 
 import torch
 import torch.nn as nn

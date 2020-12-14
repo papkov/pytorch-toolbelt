@@ -1,17 +1,17 @@
 import warnings
 from functools import partial
-from typing import List, Optional, Callable
+from typing import Callable, List, Optional
 
 import numpy as np
 import torch
-from catalyst.dl import Callback, MetricCallback, CallbackOrder, IRunner
-from sklearn.metrics import multilabel_confusion_matrix, confusion_matrix
+from catalyst.dl import Callback, CallbackOrder, IRunner, MetricCallback
+from sklearn.metrics import confusion_matrix, multilabel_confusion_matrix
 from torch import Tensor
 
-from .visualization import get_tensorboard_logger
 from ..distributed import all_gather, is_main_process
-from ..torch_utils import to_numpy, argmax_over_dim_1
-from ..visualization import render_figure_to_tensor, plot_confusion_matrix
+from ..torch_utils import argmax_over_dim_1, to_numpy
+from ..visualization import plot_confusion_matrix, render_figure_to_tensor
+from .visualization import get_tensorboard_logger
 
 __all__ = [
     "BINARY_MODE",
@@ -53,8 +53,7 @@ def pixel_accuracy(outputs: torch.Tensor, targets: torch.Tensor, ignore_index=No
 
 
 class PixelAccuracyCallback(MetricCallback):
-    """Pixel accuracy metric callback
-    """
+    """Pixel accuracy metric callback"""
 
     def __init__(
         self, input_key: str = "targets", output_key: str = "logits", prefix: str = "accuracy", ignore_index=None
@@ -156,7 +155,7 @@ class ConfusionMatrixCallback(Callback):
 
 class F1ScoreCallback(Callback):
     """
-        Compute F1 metric score
+    Compute F1 metric score
 
     """
 

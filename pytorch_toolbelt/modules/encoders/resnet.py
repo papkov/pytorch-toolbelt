@@ -6,7 +6,7 @@ Encodes listed here provides easy way to swap backbone of classification/segment
 from collections import OrderedDict
 
 from torch import nn
-from torchvision.models import resnet50, resnet34, resnet18, resnet101, resnet152
+from torchvision.models import resnet18, resnet34, resnet50, resnet101, resnet152
 
 from .common import EncoderModule, _take, make_n_channel_input
 

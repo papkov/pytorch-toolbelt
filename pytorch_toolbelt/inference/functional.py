@@ -1,5 +1,5 @@
-from collections import Sized, Iterable
-from typing import Union, Tuple
+from collections import Iterable, Sized
+from typing import Tuple, Union
 
 import torch
 from torch import Tensor

@@ -32,8 +32,7 @@ class BinaryFocalLoss(_Loss):
         )
 
     def forward(self, label_input, label_target):
-        """Compute focal loss for binary classification problem.
-        """
+        """Compute focal loss for binary classification problem."""
         label_target = label_target.view(-1)
         label_input = label_input.view(-1)
 

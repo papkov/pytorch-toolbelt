@@ -6,16 +6,16 @@ from typing import List
 
 from torch import Tensor
 
-from .common import EncoderModule, _take, make_n_channel_input
 from ..backbone.senet import (
     SENet,
-    se_resnext50_32x4d,
-    se_resnext101_32x4d,
     se_resnet50,
     se_resnet101,
     se_resnet152,
+    se_resnext50_32x4d,
+    se_resnext101_32x4d,
     senet154,
 )
+from .common import EncoderModule, _take, make_n_channel_input
 
 __all__ = [
     "SEResnetEncoder",

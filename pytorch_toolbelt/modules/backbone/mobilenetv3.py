@@ -5,7 +5,7 @@ from collections import OrderedDict
 import torch.nn as nn
 import torch.nn.functional as F
 
-from ..activations import HardSwish, HardSigmoid
+from ..activations import HardSigmoid, HardSwish
 from ..identity import Identity
 
 
@@ -201,8 +201,7 @@ class LastBlockSmall(nn.Module):
 
 
 class MobileNetV3(nn.Module):
-    """MobileNetV3 implementation.
-    """
+    """MobileNetV3 implementation."""
 
     def __init__(
         self, num_classes=1000, scale=1.0, in_channels=3, drop_prob=0.0, num_steps=3e5, start_step=0, small=False

@@ -1,11 +1,11 @@
 from typing import List
 
 import torch
-from torch import nn, Tensor
 import torch.nn.functional as F
+from torch import Tensor, nn
 
-from .common import DecoderModule
 from ..activations import ABN
+from .common import DecoderModule
 
 __all__ = ["DeeplabV3Decoder"]
 

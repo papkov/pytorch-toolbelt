@@ -4,7 +4,7 @@
 
 import glob
 import os
-from typing import Union, List
+from typing import List, Union
 
 import cv2
 import numpy as np

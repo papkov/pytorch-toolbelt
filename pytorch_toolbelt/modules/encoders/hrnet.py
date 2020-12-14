@@ -5,7 +5,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from .common import EncoderModule, make_n_channel_input, _take
+from .common import EncoderModule, _take, make_n_channel_input
 
 __all__ = ["HRNetV2Encoder18", "HRNetV2Encoder34", "HRNetV2Encoder48"]
 

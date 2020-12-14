@@ -2,7 +2,7 @@ from collections import OrderedDict
 from typing import List
 
 from torch import nn
-from torchvision.models import densenet121, densenet161, densenet169, densenet201, DenseNet
+from torchvision.models import DenseNet, densenet121, densenet161, densenet169, densenet201
 
 from .common import EncoderModule, _take, make_n_channel_input
 

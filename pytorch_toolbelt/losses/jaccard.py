@@ -2,9 +2,10 @@ from typing import List
 
 import torch
 import torch.nn.functional as F
-from pytorch_toolbelt.utils.torch_utils import to_tensor
 from torch import Tensor
 from torch.nn.modules.loss import _Loss
+
+from pytorch_toolbelt.utils.torch_utils import to_tensor
 
 from .functional import soft_jaccard_score
 

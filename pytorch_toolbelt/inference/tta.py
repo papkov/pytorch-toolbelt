@@ -5,11 +5,12 @@ transformation written in PyTorch and respect gradients flow.
 """
 from collections import defaultdict
 from functools import partial
-from typing import Tuple, List, Optional, Union, Callable, Dict
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import torch
 from torch import Tensor, nn
 from torch.nn.functional import interpolate
+
 from ..utils.support import pytorch_toolbelt_deprecated
 from . import functional as F
 
@@ -247,7 +248,15 @@ def d2_image_augment(image: Tensor) -> Tensor:
             - Vertically-flipped tensor
 
     """
-    return torch.cat([image, F.torch_rot180(image), F.torch_fliplr(image), F.torch_flipud(image),], dim=0,)
+    return torch.cat(
+        [
+            image,
+            F.torch_rot180(image),
+            F.torch_fliplr(image),
+            F.torch_flipud(image),
+        ],
+        dim=0,
+    )
 
 
 def d2_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") -> Tensor:
@@ -266,7 +275,12 @@ def d2_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") ->
     b1, b2, b3, b4 = torch.chunk(image, 4)
 
     image: Tensor = torch.stack(
-        [b1, F.torch_rot180(b2), F.torch_fliplr(b3), F.torch_flipud(b4),]
+        [
+            b1,
+            F.torch_rot180(b2),
+            F.torch_fliplr(b3),
+            F.torch_flipud(b4),
+        ]
     )
 
     if reduction == "mean":
@@ -422,7 +436,10 @@ def flips_image_augment(image: Tensor) -> Tensor:
     return torch.cat([image, F.torch_fliplr(image), F.torch_flipud(image)], dim=0)
 
 
-def flips_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean",) -> Tensor:
+def flips_image_deaugment(
+    image: Tensor,
+    reduction: MaybeStrOrCallable = "mean",
+) -> Tensor:
     """
     Deaugment input tensor (output of the model) assuming the input was flip-augmented image (See flips_augment).
     Args:
@@ -450,7 +467,10 @@ def flips_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean",
     return image
 
 
-def flips_labels_deaugment(logits: Tensor, reduction: MaybeStrOrCallable = "mean",) -> Tensor:
+def flips_labels_deaugment(
+    logits: Tensor,
+    reduction: MaybeStrOrCallable = "mean",
+) -> Tensor:
     """
     Deaugment input tensor (output of the model) assuming the input was flip-augmented image (See flips_image_augment).
     Args:
@@ -507,7 +527,9 @@ def ms_image_augment(
 
 
 def ms_labels_deaugment(
-    logits: List[Tensor], size_offsets: List[Union[int, Tuple[int, int]]], reduction: MaybeStrOrCallable = "mean",
+    logits: List[Tensor],
+    size_offsets: List[Union[int, Tuple[int, int]]],
+    reduction: MaybeStrOrCallable = "mean",
 ):
     """
     Deaugment logits
@@ -556,7 +578,7 @@ def ms_image_deaugment(
         mode:
         align_corners:
         stride: Stride of the output feature map w.r.t to model input size.
-        Used to correctly scale size_offsets to match with size of output feature maps 
+        Used to correctly scale size_offsets to match with size of output feature maps
 
     Returns:
 

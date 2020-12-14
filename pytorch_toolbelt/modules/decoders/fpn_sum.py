@@ -1,9 +1,10 @@
-from typing import List, Union
-from torch import Tensor, nn
 import inspect
+from typing import List, Union
 
+from torch import Tensor, nn
+
+from .. import FPNBottleneckBlock, FPNContextBlock, conv1x1
 from .common import SegmentationDecoderModule
-from .. import conv1x1, FPNContextBlock, FPNBottleneckBlock
 
 __all__ = ["FPNSumDecoder"]
 

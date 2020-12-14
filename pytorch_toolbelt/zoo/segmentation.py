@@ -1,14 +1,14 @@
 from collections import OrderedDict
 from functools import partial
-from typing import Union, List, Dict
+from typing import Dict, List, Union
 
-from pytorch_toolbelt.modules import conv1x1, UnetBlock, ACT_RELU, ABN, ACT_SWISH
-from pytorch_toolbelt.modules import encoders as E, DepthToSpaceUpsample2d
-from pytorch_toolbelt.modules.decoders import UNetDecoder
-from pytorch_toolbelt.modules.encoders import EncoderModule
-from torch import nn, Tensor
+from torch import Tensor, nn
 from torch.nn import functional as F
 
+from pytorch_toolbelt.modules import ABN, ACT_RELU, ACT_SWISH, DepthToSpaceUpsample2d, UnetBlock, conv1x1
+from pytorch_toolbelt.modules import encoders as E
+from pytorch_toolbelt.modules.decoders import UNetDecoder
+from pytorch_toolbelt.modules.encoders import EncoderModule
 
 __all__ = [
     "UnetSegmentationModel",
@@ -71,5 +71,9 @@ def resnet34_unet32(input_channels=3, num_classes=1, dropout=0.2, pretrained=Tru
     if input_channels != 3:
         encoder.change_input_channels(input_channels)
     return UnetSegmentationModel(
-        encoder, num_classes=num_classes, unet_channels=[32, 64, 128, 256], activation=ACT_SWISH, dropout=dropout,
+        encoder,
+        num_classes=num_classes,
+        unet_channels=[32, 64, 128, 256],
+        activation=ACT_SWISH,
+        dropout=dropout,
     )

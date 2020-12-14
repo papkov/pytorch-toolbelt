@@ -1,4 +1,5 @@
-from typing import Optional, Iterator, Dict
+from typing import Dict, Iterator, Optional
+
 from torch import nn
 
 __all__ = ["get_lr_decay_parameters", "get_optimizable_parameters", "freeze_model"]
@@ -16,7 +17,8 @@ def get_lr_decay_parameters(model: nn.Module, learning_rate: float, lr_multiplie
 
     """
     custom_lr_parameters = dict(
-        (group_name, {"params": [], "lr": learning_rate * lr_factor}) for (group_name, lr_factor) in lr_multipliers.items()
+        (group_name, {"params": [], "lr": learning_rate * lr_factor})
+        for (group_name, lr_factor) in lr_multipliers.items()
     )
     custom_lr_parameters["default"] = {"params": [], "lr": learning_rate}
 

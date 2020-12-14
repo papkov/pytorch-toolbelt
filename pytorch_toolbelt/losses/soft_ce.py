@@ -1,6 +1,8 @@
 from typing import Optional
-from torch import nn, Tensor
+
 import torch.nn.functional as F
+from torch import Tensor, nn
+
 from .functional import label_smoothed_nll_loss
 
 __all__ = ["SoftCrossEntropyLoss"]

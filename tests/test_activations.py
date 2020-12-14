@@ -1,5 +1,5 @@
-import torch
 import pytest
+import torch
 
 from pytorch_toolbelt.modules.activations import instantiate_activation_block
 

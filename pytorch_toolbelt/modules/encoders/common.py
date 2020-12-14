@@ -7,7 +7,7 @@ import warnings
 from typing import List
 
 import torch
-from torch import nn, Tensor
+from torch import Tensor, nn
 
 __all__ = ["EncoderModule", "_take", "make_n_channel_input"]
 

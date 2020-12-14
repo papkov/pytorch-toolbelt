@@ -1,12 +1,12 @@
 """Implementation of different pooling modules
 
 """
-from typing import Union, Dict
+from typing import Dict, Union
 
 import torch
 import torch.nn.functional as F
-from torch.nn.modules.module import _IncompatibleKeys
 from torch import Tensor, nn
+from torch.nn.modules.module import _IncompatibleKeys
 
 __all__ = [
     "GWAP",

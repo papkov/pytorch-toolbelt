@@ -3,7 +3,7 @@ Lovasz-Softmax and Jaccard hinge loss in PyTorch
 Maxim Berman 2018 ESAT-PSI KU Leuven (MIT License)
 """
 
-from __future__ import print_function, division
+from __future__ import division, print_function
 
 import torch
 import torch.nn.functional as F
@@ -139,8 +139,7 @@ def _lovasz_softmax_flat(probas, labels, classes="present"):
 
 
 def _flatten_probas(probas, labels, ignore=None):
-    """Flattens predictions in the batch
-    """
+    """Flattens predictions in the batch"""
     if probas.dim() == 3:
         # assumes output of a sigmoid layer
         B, H, W = probas.size()
@@ -165,8 +164,7 @@ def isnan(x):
 
 
 def mean(values, ignore_nan=False, empty=0):
-    """Nanmean compatible with generators.
-    """
+    """Nanmean compatible with generators."""
     values = iter(values)
     if ignore_nan:
         values = ifilterfalse(isnan, values)

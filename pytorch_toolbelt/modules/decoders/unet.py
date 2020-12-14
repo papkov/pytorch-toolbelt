@@ -3,9 +3,9 @@ from typing import List, Union
 import torch
 from torch import nn
 
-from .common import DecoderModule
 from .. import DeconvolutionUpsample2d
 from ..unet import UnetBlock
+from .common import DecoderModule
 
 __all__ = ["UNetDecoder"]
 

@@ -1,11 +1,11 @@
 import numpy as np
+import pytest
 import torch
-from pytorch_toolbelt.inference.tiles import ImageSlicer, CudaTileMerger
-from pytorch_toolbelt.utils.torch_utils import tensor_from_rgb_image, rgb_image_from_tensor, to_numpy
 from torch import nn
 from torch.utils.data import DataLoader
-import pytest
 
+from pytorch_toolbelt.inference.tiles import CudaTileMerger, ImageSlicer
+from pytorch_toolbelt.utils.torch_utils import rgb_image_from_tensor, tensor_from_rgb_image, to_numpy
 
 skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="Cuda is not available")
 
@@ -36,7 +36,7 @@ def test_tiles_split_merge_non_dividable_cuda():
     merger = CudaTileMerger(tiler.target_shape, channels=image.shape[2], weight=tiler.weight)
     for tile, coordinates in zip(tiles, tiler.crops):
         # Integrate as batch of size 1
-        merger.integrate_batch(tensor_from_rgb_image(tile).unsqueeze(0).float().cuda(), [coordinates])
+        merger.integrate_batch(tensor_from_rgb_image(tile).unsqueeze(0).float().cuda(), coordinates[None, ...])
 
     merged = merger.merge()
     merged = rgb_image_from_tensor(merged, mean=0, std=1, max_pixel_value=1)

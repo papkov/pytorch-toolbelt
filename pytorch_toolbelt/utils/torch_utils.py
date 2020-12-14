@@ -2,11 +2,12 @@
 
 """
 import collections
-from typing import Optional, Sequence, Union, Dict, List, Any
+from typing import Any, Dict, List, Optional, Sequence, Union
 
 import numpy as np
 import torch
-from torch import nn, Tensor
+from torch import Tensor, nn
+
 from .support import pytorch_toolbelt_deprecated
 
 __all__ = [

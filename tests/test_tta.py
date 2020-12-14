@@ -1,10 +1,9 @@
 from collections import defaultdict
 
 import cv2
-import torch
 import numpy as np
 import pytest
-
+import torch
 from torch import nn
 
 from pytorch_toolbelt.inference import tta

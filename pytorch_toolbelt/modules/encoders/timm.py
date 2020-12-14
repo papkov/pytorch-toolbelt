@@ -7,7 +7,8 @@ import torch
 from torch import nn
 
 from pytorch_toolbelt.modules import Swish
-from .common import EncoderModule, make_n_channel_input, _take
+
+from .common import EncoderModule, _take, make_n_channel_input
 
 __all__ = [
     "B0Encoder",

@@ -1,6 +1,7 @@
 import pytest
 import torch
-from pytorch_toolbelt.modules import HFF, ResidualDeconvolutionUpsample2d, GlobalKMaxPool2d
+
+from pytorch_toolbelt.modules import HFF, GlobalKMaxPool2d, ResidualDeconvolutionUpsample2d
 
 skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="Cuda is not available")
 

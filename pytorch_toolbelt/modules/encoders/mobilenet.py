@@ -1,6 +1,6 @@
-from .common import EncoderModule, _take, make_n_channel_input
 from ..backbone.mobilenet import MobileNetV2
 from ..backbone.mobilenetv3 import MobileNetV3
+from .common import EncoderModule, _take, make_n_channel_input
 
 __all__ = ["MobilenetV2Encoder", "MobilenetV3Encoder"]
 

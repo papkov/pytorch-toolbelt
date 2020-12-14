@@ -1,11 +1,11 @@
-from typing import Tuple, List
+from typing import List, Tuple
 
 import torch
 import torch.nn.functional as F
 from torch import nn
 
-from .common import DecoderModule
 from ..activations import ABN
+from .common import DecoderModule
 
 __all__ = ["UNetDecoderV2", "UnetCentralBlockV2", "UnetDecoderBlockV2"]
 
@@ -35,8 +35,7 @@ class UnetCentralBlockV2(nn.Module):
 
 
 class UnetDecoderBlockV2(nn.Module):
-    """
-    """
+    """"""
 
     def __init__(
         self,

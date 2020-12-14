@@ -1,5 +1,5 @@
-from .common import EncoderModule, _take, make_n_channel_input
 from ..backbone.inceptionv4 import inceptionv4
+from .common import EncoderModule, _take, make_n_channel_input
 
 __all__ = ["InceptionV4Encoder"]
 

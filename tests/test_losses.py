@@ -1,6 +1,7 @@
 import pytest
-import pytorch_toolbelt.losses.functional as F
 import torch
+
+import pytorch_toolbelt.losses.functional as F
 from pytorch_toolbelt.losses import DiceLoss, JaccardLoss, SoftBCEWithLogitsLoss, SoftCrossEntropyLoss
 
 

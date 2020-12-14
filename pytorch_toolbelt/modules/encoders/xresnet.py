@@ -4,7 +4,7 @@ from typing import List, Union
 import torch
 from torch import nn
 
-from pytorch_toolbelt.modules import ACT_RELU, instantiate_activation_block, ChannelSpatialGate2d
+from pytorch_toolbelt.modules import ACT_RELU, ChannelSpatialGate2d, instantiate_activation_block
 from pytorch_toolbelt.modules.encoders import EncoderModule, make_n_channel_input
 
 __all__ = [

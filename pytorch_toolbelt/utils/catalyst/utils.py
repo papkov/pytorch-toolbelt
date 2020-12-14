@@ -1,13 +1,13 @@
+import math
 import os
 from collections import OrderedDict
 from pathlib import Path
 from typing import Dict
-import math
+
 import torch
 from catalyst import utils
 from catalyst.callbacks import BaseCheckpointCallback
-from catalyst.dl import IRunner, Callback, CallbackOrder
-
+from catalyst.dl import Callback, CallbackOrder, IRunner
 
 __all__ = [
     "BestMetricCheckpointCallback",
@@ -285,5 +285,6 @@ class HyperParametersCallback(Callback):
         hparam_dict["stage"] = state.stage_name
 
         logger.add_hparams(
-            hparam_dict=self.hparam_dict, metric_dict=state.best_valid_metrics,
+            hparam_dict=self.hparam_dict,
+            metric_dict=state.best_valid_metrics,
         )

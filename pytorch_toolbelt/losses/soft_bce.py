@@ -1,7 +1,7 @@
 from typing import Optional
 
 import torch.nn.functional as F
-from torch import nn, Tensor
+from torch import Tensor, nn
 
 __all__ = ["SoftBCEWithLogitsLoss"]
 

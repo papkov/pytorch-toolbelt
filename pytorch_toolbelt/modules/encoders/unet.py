@@ -4,8 +4,8 @@ from typing import Union
 
 from torch import nn
 
-from .common import EncoderModule, make_n_channel_input
 from ..unet import UnetBlock
+from .common import EncoderModule, make_n_channel_input
 
 __all__ = ["UnetEncoder"]
 

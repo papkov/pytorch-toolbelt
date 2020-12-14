@@ -1,5 +1,6 @@
-from torch import nn, Tensor
 from typing import List, Union
+
+from torch import Tensor, nn
 
 __all__ = ["ApplySoftmaxTo", "ApplySigmoidTo", "Ensembler", "PickModelOutput"]
 

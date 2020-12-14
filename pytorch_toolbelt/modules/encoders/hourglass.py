@@ -1,12 +1,12 @@
 import inspect
 from collections import OrderedDict
-from typing import List, Callable, Tuple
+from typing import Callable, List, Tuple
 
 import torch
+from torch import Tensor, nn
 
 from pytorch_toolbelt.modules import ACT_RELU, get_activation_block
 from pytorch_toolbelt.modules.encoders import EncoderModule, make_n_channel_input
-from torch import nn, Tensor
 
 __all__ = ["StackedHGEncoder", "StackedSupervisedHGEncoder"]
 

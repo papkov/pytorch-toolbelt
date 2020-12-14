@@ -1,11 +1,8 @@
 from typing import Dict
 
 import torch
-from catalyst.dl import (
-    CriterionCallback,
-    IRunner,
-)
-from torch import nn, Tensor
+from catalyst.dl import CriterionCallback, IRunner
+from torch import Tensor, nn
 
 __all__ = [
     "TrainOnlyCriterionCallback",

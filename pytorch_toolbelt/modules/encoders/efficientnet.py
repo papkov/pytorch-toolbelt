@@ -7,7 +7,7 @@ from typing import List
 import torch
 from torch import nn
 
-from .common import EncoderModule, make_n_channel_input, _take
+from .common import EncoderModule, _take, make_n_channel_input
 
 __all__ = [
     "EfficientNetEncoder",
@@ -21,7 +21,7 @@ __all__ = [
     "EfficientNetB7Encoder",
 ]
 
-from .. import ABN, SpatialGate2d, ACT_SWISH
+from .. import ABN, ACT_SWISH, SpatialGate2d
 
 
 def round_filters(filters: int, width_coefficient, depth_divisor, min_depth) -> int:
@@ -175,25 +175,67 @@ def get_default_efficientnet_params(dropout=0.2) -> List[EfficientNetBlockArgs]:
     # ]
     return [
         EfficientNetBlockArgs(
-            repeats=1, kernel_size=3, stride=1, expand_ratio=1, input_filters=32, output_filters=16, dropout=dropout,
+            repeats=1,
+            kernel_size=3,
+            stride=1,
+            expand_ratio=1,
+            input_filters=32,
+            output_filters=16,
+            dropout=dropout,
         ),
         EfficientNetBlockArgs(
-            repeats=2, kernel_size=3, stride=2, expand_ratio=6, input_filters=16, output_filters=24, dropout=dropout,
+            repeats=2,
+            kernel_size=3,
+            stride=2,
+            expand_ratio=6,
+            input_filters=16,
+            output_filters=24,
+            dropout=dropout,
         ),
         EfficientNetBlockArgs(
-            repeats=2, kernel_size=5, stride=2, expand_ratio=6, input_filters=24, output_filters=40, dropout=dropout,
+            repeats=2,
+            kernel_size=5,
+            stride=2,
+            expand_ratio=6,
+            input_filters=24,
+            output_filters=40,
+            dropout=dropout,
         ),
         EfficientNetBlockArgs(
-            repeats=3, kernel_size=3, stride=2, expand_ratio=6, input_filters=40, output_filters=80, dropout=dropout,
+            repeats=3,
+            kernel_size=3,
+            stride=2,
+            expand_ratio=6,
+            input_filters=40,
+            output_filters=80,
+            dropout=dropout,
         ),
         EfficientNetBlockArgs(
-            repeats=3, kernel_size=5, stride=1, expand_ratio=6, input_filters=80, output_filters=112, dropout=dropout,
+            repeats=3,
+            kernel_size=5,
+            stride=1,
+            expand_ratio=6,
+            input_filters=80,
+            output_filters=112,
+            dropout=dropout,
         ),
         EfficientNetBlockArgs(
-            repeats=4, kernel_size=5, stride=2, expand_ratio=6, input_filters=112, output_filters=192, dropout=dropout,
+            repeats=4,
+            kernel_size=5,
+            stride=2,
+            expand_ratio=6,
+            input_filters=112,
+            output_filters=192,
+            dropout=dropout,
         ),
         EfficientNetBlockArgs(
-            repeats=1, kernel_size=3, stride=1, expand_ratio=6, input_filters=192, output_filters=320, dropout=dropout,
+            repeats=1,
+            kernel_size=3,
+            stride=1,
+            expand_ratio=6,
+            input_filters=192,
+            output_filters=320,
+            dropout=dropout,
         ),
     ]
 

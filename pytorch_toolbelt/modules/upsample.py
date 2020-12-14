@@ -1,8 +1,8 @@
-from typing import Optional, List
+from math import hypot
+from typing import List, Optional
 
 import torch
-from torch import nn, Tensor
-from math import hypot
+from torch import Tensor, nn
 
 __all__ = [
     "bilinear_upsample_initializer",

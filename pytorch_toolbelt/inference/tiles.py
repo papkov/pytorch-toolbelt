@@ -2,18 +2,22 @@
 in a sliding-window fashion and merging prediction mask back to full-resolution.
 """
 import math
-from typing import List
+from typing import List, Optional, Tuple, Union
 
 import cv2
 import numpy as np
 import torch
+from torch import Tensor
+
+Array = np.ndarray
+Ints = Union[int, List[int], Tuple[int, int]]
 
 from pytorch_toolbelt.utils import pytorch_toolbelt_deprecated
 
 __all__ = ["ImageSlicer", "TileMerger", "CudaTileMerger", "compute_pyramid_patch_weight_loss"]
 
 
-def compute_pyramid_patch_weight_loss(width: int, height: int) -> np.ndarray:
+def compute_pyramid_patch_weight_loss(width: int, height: int) -> Tuple[Array, Array, Array]:
     """Compute a weight matrix that assigns bigger weight on pixels in center and
     less weight to pixels on image boundary.
     This weight matrix then used for merging individual tile predictions and helps dealing
@@ -55,14 +59,16 @@ class ImageSlicer:
     Helper class to slice image into tiles and merge them back
     """
 
-    def __init__(self, image_shape, tile_size, tile_step=0, image_margin=0, weight="mean"):
+    def __init__(
+        self, image_shape: Ints, tile_size: Ints, tile_step: Ints = 0, image_margin: int = 0, weight: str = "mean"
+    ):
         """
 
         :param image_shape: Shape of the source image (H, W)
         :param tile_size: Tile size (Scalar or tuple (H, W)
         :param tile_step: Step in pixels between tiles (Scalar or tuple (H, W))
         :param image_margin:
-        :param weight: Fusion algorithm. 'mean' - avergaing
+        :param weight: Fusion algorithm. 'mean' - averaging
         """
         self.image_height = image_shape[0]
         self.image_width = image_shape[1]
@@ -80,8 +86,7 @@ class ImageSlicer:
             self.tile_step = int(tile_step), int(tile_step)
 
         weights = {"mean": self._mean, "pyramid": self._pyramid}
-
-        self.weight = weight if isinstance(weight, np.ndarray) else weights[weight](self.tile_size)
+        self.weight = weight if isinstance(weight, np.ndarray) else weights[weight]()
 
         if self.tile_step[0] < 1 or self.tile_step[0] > self.tile_size[0]:
             raise ValueError()
@@ -136,7 +141,7 @@ class ImageSlicer:
         self.crops = np.array(crops)
         self.bbox_crops = np.array(bbox_crops)
 
-    def split(self, image, border_type=cv2.BORDER_CONSTANT, value=0):
+    def pad(self, image, border_type: int = cv2.BORDER_CONSTANT, value: int = 0):
         assert image.shape[0] == self.image_height
         assert image.shape[1] == self.image_width
 
@@ -154,6 +159,11 @@ class ImageSlicer:
         # This check recovers possible lack of last dummy dimension for single-channel images
         if len(image.shape) != orig_shape_len:
             image = np.expand_dims(image, axis=-1)
+
+        return image
+
+    def split(self, image, border_type=cv2.BORDER_CONSTANT, value=0):
+        image = self.pad(image, border_type, value)
 
         tiles = []
         for x, y, tile_width, tile_height in self.crops:
@@ -165,24 +175,8 @@ class ImageSlicer:
 
         return tiles
 
-    def cut_patch(self, image: np.ndarray, slice_index, border_type=cv2.BORDER_CONSTANT, value=0):
-        assert image.shape[0] == self.image_height
-        assert image.shape[1] == self.image_width
-
-        orig_shape_len = len(image.shape)
-        image = cv2.copyMakeBorder(
-            image,
-            self.margin_top,
-            self.margin_bottom,
-            self.margin_left,
-            self.margin_right,
-            borderType=border_type,
-            value=value,
-        )
-
-        # This check recovers possible lack of last dummy dimension for single-channel images
-        if len(image.shape) != orig_shape_len:
-            image = np.expand_dims(image, axis=-1)
+    def cut_patch(self, image: np.ndarray, slice_index: int, border_type=cv2.BORDER_CONSTANT, value=0):
+        image = self.pad(image, border_type, value)
 
         x, y, tile_width, tile_height = self.crops[slice_index]
 
@@ -191,8 +185,63 @@ class ImageSlicer:
         assert tile.shape[1] == self.tile_size[1]
         return tile
 
+    def crop_no_pad(
+        self, slice_index: int, random_crop: bool = False
+    ) -> Tuple[Tuple[int, int, int, int], Tuple[int, int, int, int]]:
+        """
+        Move padded crop coordinates to original
+        :param slice_index: index in self.crops
+        :param random_crop: if sample x and y randomly
+        :return:
+            coordinates in original image (ix0, ix1, iy0, iy1)
+            coordinates in tile (tx0, tx1, ty0, ty1)
+        """
+        x, y, tile_width, tile_height = self.crops[slice_index]
+        if random_crop:
+            x = np.random.randint(0, self.image_width - tile_width - 1)
+            y = np.random.randint(0, self.image_height - tile_height - 1)
+
+        # Get original coordinates with padding
+        x0 = x - self.margin_left  # may be negative
+        y0 = y - self.margin_top
+        x1 = x0 + tile_width  # may overflow image size
+        y1 = y0 + tile_height
+
+        # Restrict coordinated by image size
+        ix0 = max(x0, 0)
+        iy0 = max(y0, 0)
+        ix1 = min(x1, self.image_width)
+        iy1 = min(y1, self.image_height)
+
+        # Set shifts for the tile
+        tx0 = ix0 - x0  # >= 0
+        ty0 = iy0 - y0  # >= 0
+        tx1 = tile_width + ix1 - x1  # <= tile_width
+        ty1 = tile_height + iy1 - y1  # <= tile_height
+
+        return (ix0, ix1, iy0, iy1), (tx0, tx1, ty0, ty1)
+
+    def cut_patch_no_pad(self, image: Array, slice_index: int, random_crop: bool = False) -> Array:
+        """
+        Memory efficient version of ImageSlicer.cut_patch with zero padding
+        :param image:
+        :param slice_index:
+        :param random_crop: if sample x and y randomly
+        """
+        (ix0, ix1, iy0, iy1), (tx0, tx1, ty0, ty1) = self.crop_no_pad(slice_index, random_crop)
+        # print((x0, x1, y0, y1), (ix0, ix1, iy0, iy1), (tx0, tx1, ty0, ty1))
+
+        # Allocate tile
+        shape = (self.tile_size[0], self.tile_size[1])
+        if len(image.shape) > 2:
+            # Suppose channel last
+            shape += (image.shape[-1],)
+        tile = np.zeros(shape, dtype=image.dtype)
+        tile[ty0:ty1, tx0:tx1] = image[ix0:ix1, iy0:iy1]
+        return tile
+
     @property
-    def target_shape(self):
+    def target_shape(self) -> Tuple[int, int]:
         target_shape = (
             self.image_height + self.margin_bottom + self.margin_top,
             self.image_width + self.margin_right + self.margin_left,
@@ -211,7 +260,7 @@ class ImageSlicer:
         )
 
         image = np.zeros(target_shape, dtype=np.float64)
-        norm_mask = np.zeros(target_shape, dtype=np.float64)
+        norm_mask = np.zeros(target_shape, dtype=np.uint8)
 
         w = np.dstack([self.weight] * channels)
 
@@ -221,7 +270,8 @@ class ImageSlicer:
             norm_mask[y : y + tile_height, x : x + tile_width] += w
 
         # print(norm_mask.min(), norm_mask.max())
-        norm_mask = np.clip(norm_mask, a_min=np.finfo(norm_mask.dtype).eps, a_max=None)
+        # TODO is clip necessary with uint?
+        norm_mask = np.clip(norm_mask, a_min=0, a_max=None)
         normalized = np.divide(image, norm_mask).astype(dtype)
         crop = self.crop_to_orignal_size(normalized)
         return crop
@@ -237,11 +287,18 @@ class ImageSlicer:
         assert crop.shape[1] == self.image_width
         return crop
 
-    def _mean(self, tile_size):
-        return np.ones((tile_size[0], tile_size[1]), dtype=np.float32)
+    def _mean(self, tile_size: Optional[Ints] = None):
+        if tile_size is None:
+            tile_size = self.tile_size
+        return np.ones(tile_size, dtype=np.uint8)
 
-    def _pyramid(self, tile_size):
-        w, _, _ = compute_pyramid_patch_weight_loss(tile_size[0], tile_size[1])
+    def _pyramid(self, tile_size: Optional[Ints] = None):
+        if tile_size is None:
+            tile_size = self.tile_size
+        w, _, _ = compute_pyramid_patch_weight_loss(*tile_size)
+        # quantize weight for memory efficiency
+        n_steps = min(64, min(tile_size) // 2)  # TODO calculate not to exceed 255 in uint8 anyhow (even with step 1)
+        w = ((w - np.min(w)) / np.max(w) * n_steps + 1).astype(np.uint8)
         return w
 
 
@@ -250,33 +307,34 @@ class TileMerger:
     Helper class to merge final image on GPU. This generally faster than moving individual tiles to CPU.
     """
 
-    def __init__(self, image_shape, channels, weight, device="cpu"):
+    def __init__(self, image_shape: Tuple[int, int], channels, weight, device="cpu"):
         """
-
         :param image_shape: Shape of the source image
-        :param image_margin:
+        :param channels: Number of channels
         :param weight: Weighting matrix
+        :param device: Device for memory allocation
         """
         self.image_height = image_shape[0]
         self.image_width = image_shape[1]
         self.channels = channels
 
-        self.weight = torch.from_numpy(np.expand_dims(weight, axis=0)).to(device).float()
+        # Make weight and norm_mask uint8 for memory efficiency
+        self.weight = torch.from_numpy(np.expand_dims(weight, axis=0)).to(device).type(torch.uint8)
         self.image = torch.zeros((channels, self.image_height, self.image_width), device=device).float()
-        self.norm_mask = torch.zeros((1, self.image_height, self.image_width), device=device).float()
+        self.norm_mask = torch.zeros((1, self.image_height, self.image_width), device=device, dtype=torch.uint8)
 
-    def accumulate_single(self, tile: torch.Tensor, coords):
+    def accumulate_single(self, tile: Tensor, coords: Array):
         """
         Accumulates single element
-        :param sample: Predicted image of shape [C,H,W]
-        :param crop_coords: Corresponding tile crops w.r.t to original image
+        :param tile: Predicted image of shape [C,H,W]
+        :param coords: Corresponding tile crops w.r.t to original image
         """
         tile = tile.to(device=self.image.device)
         x, y, tile_width, tile_height = coords
         self.image[:, y : y + tile_height, x : x + tile_width] += tile * self.weight
         self.norm_mask[:, y : y + tile_height, x : x + tile_width] += self.weight
 
-    def integrate_batch(self, batch: torch.Tensor, crop_coords):
+    def integrate_batch(self, batch: Tensor, crop_coords: Array):
         """
         Accumulates batch of tile predictions
         :param batch: Predicted tiles  of shape [B,C,H,W]
@@ -286,12 +344,29 @@ class TileMerger:
             raise ValueError("Number of images in batch does not correspond to number of coordinates")
 
         batch = batch.to(device=self.image.device)
-        for tile, (x, y, tile_width, tile_height) in zip(batch, crop_coords):
-            self.image[:, y : y + tile_height, x : x + tile_width] += tile * self.weight
-            self.norm_mask[:, y : y + tile_height, x : x + tile_width] += self.weight
+        for tile, coords in zip(batch, crop_coords):
+            self.accumulate_single(tile, coords)
 
-    def merge(self) -> torch.Tensor:
+    def merge(self) -> Tensor:
         return self.image / self.norm_mask
+
+    def merge_(self) -> None:
+        """
+        Inplace version of TileMerger.merge() using div_()
+        Substitute self.image with (self.image / self.norm_mask)
+        :return: None
+        """
+        self.image.div_(self.norm_mask)
+
+    def threshold_(self, threshold: float = 0.5) -> None:
+        """
+        Inplace thresholding of TileMerger.image:
+        image = sigmoid(image) > threshold
+        :return: None
+        """
+        self.image.sigmoid_()
+        self.image.gt_(threshold)
+        self.image.type(torch.int8)
 
 
 @pytorch_toolbelt_deprecated("This class is deprecated and will be removed in 0.5.0. Please use TileMerger instead.")

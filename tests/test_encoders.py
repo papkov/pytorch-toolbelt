@@ -3,8 +3,8 @@ import torch
 
 import pytorch_toolbelt.modules.encoders as E
 from pytorch_toolbelt.modules.backbone.inceptionv4 import inceptionv4
-from pytorch_toolbelt.utils.torch_utils import maybe_cuda, count_parameters
 from pytorch_toolbelt.modules.encoders import timm
+from pytorch_toolbelt.utils.torch_utils import count_parameters, maybe_cuda
 
 skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA is not available")
 
