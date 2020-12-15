@@ -297,7 +297,9 @@ class ImageSlicer:
             tile_size = self.tile_size
         w, _, _ = compute_pyramid_patch_weight_loss(*tile_size)
         # quantize weight for memory efficiency
-        n_steps = min(63, min(tile_size) // 2)  # TODO calculate not to exceed 255 in uint8 anyhow (even with step 1)
+        n_steps = min(
+            63 - 1, min(tile_size) // 2
+        )  # TODO calculate not to exceed 255 in uint8 anyhow (even with step 1)
         w = ((w - np.min(w)) / np.max(w) * n_steps + 1).astype(np.uint8)
         return w
 
@@ -307,21 +309,29 @@ class TileMerger:
     Helper class to merge final image on GPU. This generally faster than moving individual tiles to CPU.
     """
 
-    def __init__(self, image_shape: Tuple[int, int], channels, weight, device="cpu"):
+    def __init__(
+        self, image_shape: Tuple[int, int], channels: int, weight: Array, device="cpu", default_value: float = -99.0
+    ):
         """
         :param image_shape: Shape of the source image
         :param channels: Number of channels
         :param weight: Weighting matrix
         :param device: Device for memory allocation
+        :param default_value: Negative value to fill image by default
+                              in case we predict only some tiles ond need zeros
+                              for other areas in final prediction
         """
         self.image_height = image_shape[0]
         self.image_width = image_shape[1]
         self.channels = channels
+        self.default_value = default_value
 
         # Make weight and norm_mask uint8 for memory efficiency
         self.weight = torch.from_numpy(np.expand_dims(weight, axis=0)).to(device).type(torch.uint8)
-        self.image = torch.zeros((channels, self.image_height, self.image_width), device=device).float()
-        self.norm_mask = torch.zeros((1, self.image_height, self.image_width), device=device, dtype=torch.uint8)
+        self.image = (
+            torch.empty((channels, self.image_height, self.image_width), device=device).fill_(default_value).float()
+        )
+        self.norm_mask = torch.ones((1, self.image_height, self.image_width), device=device, dtype=torch.uint8)
 
     def accumulate_single(self, tile: Tensor, coords: Array):
         """
@@ -331,6 +341,12 @@ class TileMerger:
         """
         tile = tile.to(device=self.image.device)
         x, y, tile_width, tile_height = coords
+        # Replace default (large negative) value with zero to add predictions
+        self.image[:, y : y + tile_height, x : x + tile_width] = torch.where(
+            self.image[:, y : y + tile_height, x : x + tile_width] == self.default_value,
+            torch.tensor(0.0).float().to(self.image.device),
+            self.image[:, y : y + tile_height, x : x + tile_width],
+        )
         self.image[:, y : y + tile_height, x : x + tile_width] += tile * self.weight
         self.norm_mask[:, y : y + tile_height, x : x + tile_width] += self.weight
 
