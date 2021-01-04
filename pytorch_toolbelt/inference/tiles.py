@@ -2,6 +2,7 @@
 in a sliding-window fashion and merging prediction mask back to full-resolution.
 """
 import math
+from functools import reduce
 from typing import List, Optional, Tuple, Union
 
 import cv2
@@ -14,11 +15,53 @@ Ints = Union[int, List[int], Tuple[int, int]]
 
 from pytorch_toolbelt.utils import pytorch_toolbelt_deprecated
 
-__all__ = ["ImageSlicer", "TileMerger", "CudaTileMerger", "compute_pyramid_patch_weight_loss"]
+__all__ = [
+    "ImageSlicer",
+    "TileMerger",
+    "CudaTileMerger",
+    "compute_pyramid_patch_weight_loss",
+    "compute_pyramid_patch_weight_loss_2d",
+]
 
 
-def compute_pyramid_patch_weight_loss(width: int, height: int) -> Tuple[Array, Array, Array]:
-    """Compute a weight matrix that assigns bigger weight on pixels in center and
+def compute_pyramid_patch_weight_loss(*dims: int) -> Tuple[Array, Array, Array]:
+    """
+    Compute a weight matrix that assigns bigger weight on pixels in center and
+    less weight to pixels on image boundary.
+    This weight matrix then used for merging individual tile predictions and helps dealing
+    with prediction artifacts on tile boundaries.
+
+    :param dims: tile dimensions (any number)
+    :return: tuple of arrays with given dimensionality
+        weight,
+        d_circle,
+        d_ladder
+    """
+
+    dims = np.array(dims)
+    dims_center = dims * 0.5  # center
+    dims_start = np.zeros_like(dims)  # start
+    dims_end = dims.copy()  # end
+
+    d_circle = [np.square(np.arange(d) - c + 0.5) for d, c in zip(dims, dims_center)]
+    d_circle = np.sqrt(reduce(lambda x, y: x[..., np.newaxis] + y, d_circle))
+
+    d_ladder_start = [np.square(np.arange(dim) - start + 0.5) + np.square(0.5) for dim, start in zip(dims, dims_start)]
+    d_ladder_end = [np.square(np.arange(dim) - end + 0.5) + np.square(0.5) for dim, end in zip(dims, dims_end)]
+
+    d_ladder = [np.sqrt(np.minimum(s, e)) for s, e in zip(d_ladder_start, d_ladder_end)]
+    d_ladder = reduce(lambda x, y: np.minimum(x[..., np.newaxis], y), d_ladder)
+
+    alpha = np.prod(dims) / np.sum(np.divide(d_ladder, np.add(d_circle, d_ladder)))
+    weight = alpha * np.divide(d_ladder, np.add(d_circle, d_ladder))
+
+    return weight, d_circle, d_ladder
+
+
+def compute_pyramid_patch_weight_loss_2d(width: int, height: int) -> Tuple[Array, Array, Array]:
+    """
+    Original for `compute_pyramid_patch_weight_loss` in a specific 2D case
+    Compute a weight matrix that assigns bigger weight on pixels in center and
     less weight to pixels on image boundary.
     This weight matrix then used for merging individual tile predictions and helps dealing
     with prediction artifacts on tile boundaries.

@@ -4,10 +4,22 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
-from pytorch_toolbelt.inference.tiles import CudaTileMerger, ImageSlicer
+from pytorch_toolbelt.inference.tiles import (
+    CudaTileMerger,
+    ImageSlicer,
+    compute_pyramid_patch_weight_loss,
+    compute_pyramid_patch_weight_loss_2d,
+)
 from pytorch_toolbelt.utils.torch_utils import rgb_image_from_tensor, tensor_from_rgb_image, to_numpy
 
 skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="Cuda is not available")
+
+
+def test_pyramid_loss(width: int = 21, height: int = 21):
+    out_general = compute_pyramid_patch_weight_loss(width, height)
+    out_2d = compute_pyramid_patch_weight_loss_2d(width, height)
+    for og, o2 in zip(out_general, out_2d):
+        np.testing.assert_equal(og, o2)
 
 
 def test_tiles_split_merge():
