@@ -38,6 +38,14 @@ def test_tiles_split_merge_non_dividable():
     np.testing.assert_equal(merged, image)
 
 
+def test_tiles_split_merge_non_dividable_3d():
+    image = np.random.random((563, 512, 273, 1)).astype(np.uint8)
+    tiler = ImageSlicer(image.shape, tile_size=128, tile_step=128, weight="mean")
+    tiles = tiler.split(image)
+    merged = tiler.merge(tiles, dtype=np.uint8)
+    np.testing.assert_equal(merged, image)
+
+
 @skip_if_no_cuda
 def test_tiles_split_merge_non_dividable_cuda():
 
@@ -45,14 +53,35 @@ def test_tiles_split_merge_non_dividable_cuda():
     tiler = ImageSlicer(image.shape, tile_size=(1280, 1280), tile_step=(1280, 1280), weight="mean")
     tiles = tiler.split(image)
 
-    merger = CudaTileMerger(tiler.target_shape, channels=image.shape[2], weight=tiler.weight)
+    merger = CudaTileMerger(tiler.target_shape, channels=image.shape[-1], weight=tiler.weight)
     for tile, coordinates in zip(tiles, tiler.crops):
         # Integrate as batch of size 1
         merger.integrate_batch(tensor_from_rgb_image(tile).unsqueeze(0).float().cuda(), coordinates[None, ...])
 
     merged = merger.merge()
     merged = rgb_image_from_tensor(merged, mean=0, std=1, max_pixel_value=1)
-    merged = tiler.crop_to_orignal_size(merged)
+    merged = tiler.crop_to_original_size(merged)
+
+    np.testing.assert_equal(merged, image)
+
+
+@skip_if_no_cuda
+def test_tiles_split_merge_non_dividable_cuda_3d():
+
+    image = np.random.random((563, 512, 563, 1)).astype(np.uint8)
+    tiler = ImageSlicer(image.shape, tile_size=128, tile_step=128, weight="mean")
+    tiles = tiler.split(image)
+
+    merger = CudaTileMerger(tiler.target_shape, channels=image.shape[-1], weight=tiler.weight)
+    for tile, coordinates in zip(tiles, tiler.crops):
+        # Integrate as batch of size 1
+        merger.integrate_batch(
+            torch.from_numpy(np.moveaxis(tile, -1, 0)).unsqueeze(0).float().cuda(), coordinates[None, ...]
+        )
+
+    merged = merger.merge()
+    merged = rgb_image_from_tensor(merged, mean=0, std=1, max_pixel_value=1)
+    merged = tiler.crop_to_original_size(merged)
 
     np.testing.assert_equal(merged, image)
 
@@ -92,6 +121,6 @@ def test_tiles_split_merge_cuda():
         merger.integrate_batch(pred_batch, coords_batch)
 
     merged = np.moveaxis(to_numpy(merger.merge()), 0, -1).astype(np.uint8)
-    merged = tiler.crop_to_orignal_size(merged)
+    merged = tiler.crop_to_original_size(merged)
 
     np.testing.assert_equal(merged, image.max(axis=2, keepdims=True))

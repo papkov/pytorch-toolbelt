@@ -205,7 +205,7 @@ for tiles_batch, coords_batch in DataLoader(list(zip(tiles, tiler.crops)), batch
 
 # Normalize accumulated mask and convert back to numpy
 merged_mask = np.moveaxis(to_numpy(merger.merge()), 0, -1).astype(np.uint8)
-merged_mask = tiler.crop_to_orignal_size(merged_mask)
+merged_mask = tiler.crop_to_original_size(merged_mask)
 ```
 
 ## Advanced examples
