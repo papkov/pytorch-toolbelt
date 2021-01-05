@@ -103,8 +103,8 @@ def test_tiles_split_merge_cuda():
         def __init__(self):
             super().__init__()
 
-        def forward(self, input):
-            max_channel, _ = torch.max(input, dim=1, keepdim=True)
+        def forward(self, inp):
+            max_channel, _ = torch.max(inp, dim=1, keepdim=True)
             return max_channel
 
     image = np.random.random((5000, 5000, 3)).astype(np.uint8)

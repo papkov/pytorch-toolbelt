@@ -4,7 +4,7 @@ in a sliding-window fashion and merging prediction mask back to full-resolution.
 import math
 from functools import reduce
 from itertools import product
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union, Any
 
 import numpy as np
 import torch
@@ -200,7 +200,7 @@ class ImageSlicer:
         # Combine coordinates with a Cartesian product; each inner list consists of `n_dims` elements
         self.crops = np.array(list(product(*crops_product)))
 
-    def split(self, image: Array, mode="constant", **kwargs):
+    def split(self, image: Array, mode: str = "constant", **kwargs: Any):
         """
         Split image into tiles
         """
@@ -208,26 +208,22 @@ class ImageSlicer:
 
         tiles = []
         for i, crop in enumerate(self.crops):
-            tile = self.crop_tile(image, i, mode=mode, **kwargs)
+            tile, crop = self.crop_tile(image, i, random_crop=False, mode=mode, **kwargs)
             assert_shape(tile.shape, self.tile_size)
             tiles.append(tile)
 
         return tiles
 
     def project_crop_to_tile(
-        self, crop_index: int, random_crop: bool = False
-    ) -> Tuple[Tuple[List[int], List[int]], Tuple[List[int], List[int]]]:
+        self, crop: List[int],
+    ) -> Tuple[Tuple[List[int], List[int]], Tuple[List[int], List[int]], List[int]]:
         """
         Project crop coordinates in padded image `self.crops` to both the original image and the tile
-        :param crop_index: index in self.crops
-        :param random_crop: if sample x and y randomly
+        :param crop: list of ints, corner coordinates of a crop
         :return:
             coordinates in original image ([ix0, iy0, ...], [ix1, iy1, ...])
             coordinates in tile ([tx0, ty0, ...], [tx1, ty1, ...])
         """
-        crop = self.crops[crop_index]
-        if random_crop:
-            crop = [np.random.randint(0, shape - ts - 1) for shape, ts in zip(self.image_shape, self.tile_size)]
 
         # Get original coordinates with padding
         c0 = [c - start for c, start in zip(crop, self.margin_start)]  # may be negative
@@ -240,38 +236,50 @@ class ImageSlicer:
         # Set shifts for the tile (tile coordinate = tc)
         tc0 = [ic - c for ic, c in zip(ic0, c0)]  # >= 0
         tc1 = [ts + ic - c for ts, ic, c in zip(self.tile_size, ic1, c1)]
-        return (ic0, ic1), (tc0, tc1)
+        return (ic0, ic1), (tc0, tc1), crop
 
     def crop_tile(
         self,
         image: Array,
-        crop_index: int,
+        crop_index: Optional[int] = None,
+        crop: Optional[List[int]] = None,
         random_crop: bool = False,
-        mode="constant",
-        **kwargs,
-    ) -> Array:
+        mode: str = "constant",
+        **kwargs: Any,
+    ) -> Tuple[Array, List[int]]:
         """
         Memory efficient version of ImageSlicer.cut_patch with zero padding
         :param image: image to cut a tile from
-        :param crop_index:
-        :param random_crop: if sample x and y randomly
+        :param crop: list of ints, corner coordinates of a crop
+        :param crop_index: alternatively, crop index in self.crops
+        :param random_crop: if sample crop coordinates randomly
         :param mode: padding mode for np.pad
                     {constant, edge, linear_ramp, maximum, mean, median, minimum, reflect, symmetric, wrap, empty}
         :param kwargs: kwargs for np.pad
+        :returns:
+            tile, cropped array
+            crop, list of crop corner coordinates
         """
         assert_shape(image.shape[:-1], self.image_shape[:-1])
 
+        if crop is None:
+            if random_crop:
+                crop = [np.random.randint(0, shape - ts - 1) for shape, ts in zip(self.image_shape, self.tile_size)]
+            else:
+                crop = self.crops[crop_index]
+
         # Get image slice (image coordinate = ic, tile coordinate = tc)
-        (ic0, ic1), (tc0, tc1) = self.project_crop_to_tile(crop_index, random_crop)
+        (ic0, ic1), (tc0, tc1), crop = self.project_crop_to_tile(crop)
         image_slice = tuple(slice(c0, c1) for c0, c1 in zip(ic0, ic1))
 
         # Assume channel last in padding
+        # [(before_0, after_0), (before_1, after_1), ...]
         pad_width = [(c0, ts - c1) for ts, c0, c1 in zip(self.tile_size, tc0, tc1)] + [(0, 0)]
 
         # Create tile by padding image slice to the tile size
         tile = np.pad(image[image_slice], pad_width=pad_width, mode=mode, **kwargs)
         assert_shape(tile.shape, self.tile_size)
-        return tile
+        return tile, crop
 
     @property
     def target_shape(self) -> Tuple[int, ...]:
@@ -344,6 +352,9 @@ class ImageSlicer:
         )  # TODO calculate not to exceed 255 in uint8 anyhow (even with step 1)
         w = ((w - np.min(w)) / np.max(w) * n_steps + 1).astype(np.uint8)
         return w
+
+    def __len__(self):
+        return len(self.crops)
 
 
 class TileMerger:
