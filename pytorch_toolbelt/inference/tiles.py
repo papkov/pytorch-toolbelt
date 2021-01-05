@@ -111,6 +111,14 @@ def make_tuple(numbers: Ints, n_dims: Optional[int] = None) -> Tuple[int, ...]:
     return numbers
 
 
+def assert_shape(shape_0: Tuple[int, ...], shape_1: Tuple[int, ...]) -> None:
+    """
+    Assert shape equality for each dim
+    """
+    for i, (s0, s1) in enumerate(zip(shape_0, shape_1)):
+        assert s0 == s1, f"shape_0 does not match shape_1 in dim {i} {s0} != {s1}"
+
+
 class ImageSlicer:
     """
     Helper class to slice image into tiles and merge them back
@@ -144,18 +152,19 @@ class ImageSlicer:
         self.tile_size = make_tuple(tile_size, n_dims=n_dims)
         self.tile_step = make_tuple(tile_step, n_dims=n_dims)
 
+        # Calculate weight for tile fusion (or assign provided)
         weights = {"mean": self._mean, "pyramid": self._pyramid}
         self.weight = weight if isinstance(weight, np.ndarray) else weights[weight]()
 
+        # Check tile step and size correctness
         for step, size in zip(self.tile_step, self.tile_size):
             if step < 1 or step > size:
                 raise ValueError()
 
+        # Calculate overlap between tiles
         overlap = [size - step for step, size in zip(self.tile_step, self.tile_size)]
 
-        self.margin_start = np.zeros_like(self.tile_size)
-        self.margin_end = np.zeros_like(self.tile_size)
-
+        # Calculate margins (arrays of `self.tile_size` shape)
         if image_margin == 0:
             # In case margin is not set, we compute it manually
             nd = [
@@ -179,21 +188,28 @@ class ImageSlicer:
             self.margin_start = np.zeros_like(self.tile_size).fill(image_margin)
             self.margin_end = np.zeros_like(self.tile_size).fill(image_margin)
 
+        # Calculate crop coordinates
         crops_product = []
         bbox_crops_product = []
         for shape, margin_start, margin_end, size, step in zip(
             self.image_shape, self.margin_start, self.margin_end, self.tile_size, self.tile_step
         ):
+            # For each dimension add top corner to the list
+            # No need to store tile size, since it is the same for every patch
             crops_product_x = []
             bbox_crops_product_x = []
             for x in range(0, shape + margin_start + margin_end - size + 1, step):
                 crops_product_x.append(x)
                 bbox_crops_product_x.append(x - margin_start)
+
+            # Append a list of corner coordinates to other lists
             crops_product.append(crops_product_x)
             bbox_crops_product.append(bbox_crops_product_x)
 
-        crops = list(product(*crops_product))
-        bbox_crops = list(product(*bbox_crops_product))
+        # Combine coordinates with a Cartesian product
+        # Each inner list consists of `n_dims` elements
+        crops: List[List[int, ...]] = list(product(*crops_product))
+        bbox_crops: List[List[int, ...]] = list(product(*bbox_crops_product))
 
         self.crops = np.array(crops)
         self.bbox_crops = np.array(bbox_crops)
@@ -225,13 +241,12 @@ class ImageSlicer:
         """
         Split image into tiles
         """
+        assert_shape(image.shape, self.image_shape)
+
         tiles = []
         for i, crop in enumerate(self.crops):
             tile = self.cut_patch_no_pad(image, slice_index=i, fill_value=fill_value)
-
-            for j, (tsr, tse) in enumerate(zip(tile.shape, self.tile_size)):
-                assert tsr == tse, f"resulted tile size does not match expected in dim {j} {tsr} != {tse}"
-
+            assert_shape(tile.shape, self.tile_size)
             tiles.append(tile)
 
         return tiles
@@ -288,7 +303,8 @@ class ImageSlicer:
         if len(image.shape) > len(shape):
             # TODO add channel first option
             shape += (image.shape[-1],)
-        tile = np.zeros(shape, dtype=image.dtype).fill(fill_value)
+        tile = np.zeros(shape, dtype=image.dtype)
+        tile.fill(fill_value)
 
         image_slice = tuple(slice(c0, c1) for c0, c1 in zip(ic0, ic1))
         tile_slice = tuple(slice(c0, c1) for c0, c1 in zip(tc0, tc1))
@@ -306,7 +322,10 @@ class ImageSlicer:
         )
         return target_shape
 
-    def merge(self, tiles: List[np.ndarray], dtype=np.float32):
+    def merge(self, tiles: List[Array], dtype=np.float32) -> Array:
+        """
+        Merge tiles to the original shape
+        """
         if len(tiles) != len(self.crops):
             raise ValueError
 
@@ -331,17 +350,15 @@ class ImageSlicer:
         return crop
 
     def crop_to_original_size(self, image: Array) -> Array:
-        for i, (ims, ts) in enumerate(zip(image.shape, self.target_shape)):
-            assert ims == ts, f"in dim {i} image shape does not match target shape {ims} != {ts}"
-
+        """
+        Crops an image from target shape to original shape
+        """
+        assert_shape(image.shape, self.target_shape)
         image_slice = tuple(
             slice(start, -end if end != 0 else None) for start, end in zip(self.margin_start, self.margin_end)
         )
         crop = image[image_slice]
-
-        for i, (cs, ims) in enumerate(zip(crop.shape[:-1], self.image_shape[:-1])):
-            assert cs == ims, f"in dim {i} crop shape does not match image shape {cs} != {ims}"
-
+        assert_shape(crop.shape[:-1], self.image_shape[:-1])
         return crop
 
     def _mean(self, tile_size: Optional[Ints] = None) -> Array:
@@ -395,7 +412,7 @@ class TileMerger:
         self.image = torch.empty((channels,) + self.image_shape, device=device).fill_(default_value).float()
         self.norm_mask = torch.ones((1,) + self.image_shape, device=device, dtype=torch.uint8)
 
-    def accumulate_single(self, tile: Tensor, coords: Tuple[int, ...]):
+    def accumulate_single(self, tile: Tensor, coords: Tuple[int, ...]) -> None:
         """
         Accumulates single element
         :param tile: Predicted image of shape [C,H,W]
@@ -414,7 +431,7 @@ class TileMerger:
         self.image[image_slice] += tile * self.weight
         self.norm_mask[image_slice] += self.weight
 
-    def integrate_batch(self, batch: Tensor, crop_coords: Array):
+    def integrate_batch(self, batch: Tensor, crop_coords: Array) -> None:
         """
         Accumulates batch of tile predictions
         :param batch: Predicted tiles  of shape [B,C,H,W]
