@@ -86,6 +86,27 @@ def test_tiles_split_merge_non_dividable_cuda_3d():
     np.testing.assert_equal(merged, image)
 
 
+@skip_if_no_cuda
+def test_tiles_split_merge_non_dividable_cuda_3d():
+
+    image = np.random.random((128, 256, 512, 1)).astype(np.uint8)
+    tiler = ImageSlicer(image.shape, tile_size=64, tile_step=48, weight="pyramid")
+    tiles = tiler.split(image)
+
+    merger = CudaTileMerger(tiler.target_shape, channels=image.shape[-1], weight=tiler.weight)
+    for tile, coordinates in zip(tiles, tiler.crops):
+        # Integrate as batch of size 1
+        merger.integrate_batch(
+            torch.from_numpy(np.moveaxis(tile, -1, 0)).unsqueeze(0).float().cuda(), coordinates[None, ...]
+        )
+
+    merged = merger.merge()
+    merged = rgb_image_from_tensor(merged, mean=0, std=1, max_pixel_value=1)
+    merged = tiler.crop_to_original_size(merged)
+
+    np.testing.assert_equal(merged, image)
+
+
 def test_tiles_split_merge_2():
     image = np.random.random((5000, 5000, 3)).astype(np.uint8)
     tiler = ImageSlicer(image.shape, tile_size=(512, 512), tile_step=(256, 256), weight="pyramid")

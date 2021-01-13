@@ -4,14 +4,14 @@ in a sliding-window fashion and merging prediction mask back to full-resolution.
 import math
 from functools import reduce
 from itertools import product
-from typing import List, Optional, Tuple, Union, Any
+from typing import Any, List, Optional, Tuple, Union
 
 import numpy as np
 import torch
 from torch import Tensor
 
 Array = np.ndarray
-Ints = Union[int, List[int], Tuple[int, int]]
+Ints = Union[int, List[int], Tuple[int, ...]]
 
 from pytorch_toolbelt.utils import pytorch_toolbelt_deprecated
 
@@ -215,7 +215,8 @@ class ImageSlicer:
         return tiles
 
     def project_crop_to_tile(
-        self, crop: List[int],
+        self,
+        crop: List[int],
     ) -> Tuple[Tuple[List[int], List[int]], Tuple[List[int], List[int]], List[int]]:
         """
         Project crop coordinates in padded image `self.crops` to both the original image and the tile
@@ -264,7 +265,9 @@ class ImageSlicer:
 
         if crop is None:
             if random_crop:
-                crop = [np.random.randint(0, shape - ts - 1) for shape, ts in zip(self.image_shape, self.tile_size)]
+                crop = [
+                    np.random.randint(0, max(1, shape - ts - 1)) for shape, ts in zip(self.image_shape, self.tile_size)
+                ]
             else:
                 crop = self.crops[crop_index]
 
