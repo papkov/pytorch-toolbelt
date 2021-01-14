@@ -360,9 +360,10 @@ class ImageSlicer:
             w = np.stack([w] * self.image_shape[self.ignore_weight_dim], axis=self.ignore_weight_dim)
 
         # quantize weight for memory efficiency
-        n_steps = min(
-            127 - 1, max(tile_size) // 2
-        )  # TODO calculate not to exceed 255 in uint8 anyhow (even with step 1)
+        n_steps = 126
+        # n_steps = min(
+        #     127 - 1, max(tile_size) // 2
+        # )  # TODO calculate not to exceed 255 in uint8 anyhow (even with step 1)
         w = ((w - np.min(w)) / np.max(w) * n_steps + 1).astype(np.uint8)
         return w
 
