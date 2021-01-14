@@ -46,6 +46,16 @@ def test_tiles_split_merge_non_dividable_3d():
     np.testing.assert_equal(merged, image)
 
 
+def test_tiles_split_merge_non_dividable_flat_3d():
+    image = np.random.random((32, 512, 273, 1)).astype(np.uint8)
+    tiler = ImageSlicer(
+        image.shape, tile_size=(32, 128, 128), tile_step=(1, 128, 128), weight="pyramid", ignore_weight_dim=0
+    )
+    tiles = tiler.split(image)
+    merged = tiler.merge(tiles, dtype=np.uint8)
+    np.testing.assert_equal(merged, image)
+
+
 @skip_if_no_cuda
 def test_tiles_split_merge_non_dividable_cuda():
 

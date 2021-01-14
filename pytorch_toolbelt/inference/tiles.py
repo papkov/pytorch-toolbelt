@@ -129,6 +129,7 @@ class ImageSlicer:
         tile_step: Ints = 0,
         image_margin: int = 0,
         weight: str = "mean",
+        ignore_weight_dim: Optional[int] = None,
         is_channels: bool = True,
     ):
         """
@@ -138,8 +139,11 @@ class ImageSlicer:
         :param tile_step: Step in pixels between tiles (scalar or tuple)
         :param image_margin:
         :param weight: Fusion algorithm. 'mean' - simple averaging, 'pyramid' - weighted by position
+        :param ignore_weight_dim: dimension to ignore when building weights (e.g. no overlap there)
+        :param is_channels: if image has channels (last dim by default)
         """
         self.image_shape = image_shape
+        self.ignore_weight_dim = ignore_weight_dim
 
         # Convert tile_size and tile_step to tuples of ints
         n_dims = len(image_shape)
@@ -348,10 +352,16 @@ class ImageSlicer:
         """
         if tile_size is None:
             tile_size = self.tile_size
+        if self.ignore_weight_dim is not None:
+            tile_size = tuple(x for i, x in enumerate(tile_size) if i != self.ignore_weight_dim)
+
         w, _, _ = compute_pyramid_patch_weight_loss(*tile_size)
+        if self.ignore_weight_dim is not None:
+            w = np.stack([w] * self.image_shape[self.ignore_weight_dim], axis=self.ignore_weight_dim)
+
         # quantize weight for memory efficiency
         n_steps = min(
-            63 - 1, min(tile_size) // 2
+            127 - 1, max(tile_size) // 2
         )  # TODO calculate not to exceed 255 in uint8 anyhow (even with step 1)
         w = ((w - np.min(w)) / np.max(w) * n_steps + 1).astype(np.uint8)
         return w
