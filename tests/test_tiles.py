@@ -117,19 +117,27 @@ def test_tiles_split_merge_non_dividable_cuda_3d():
     np.testing.assert_equal(merged, image)
 
 
-def test_tiles_split_merge_2():
+@pytest.mark.parametrize(
+    "crop_border",
+    [16, 0, 32]
+)
+def test_tiles_split_merge_2(crop_border):
     image = np.random.random((5000, 5000, 3)).astype(np.uint8)
     tiler = ImageSlicer(image.shape, tile_size=(512, 512), tile_step=(256, 256), weight="pyramid")
 
     np.testing.assert_allclose(tiler.weight, tiler.weight.T)
 
     tiles = tiler.split(image)
-    merged = tiler.merge(tiles, dtype=np.uint8)
+    merged = tiler.merge(tiles, dtype=np.uint8, crop_border=crop_border)
     np.testing.assert_equal(merged, image)
 
 
 @skip_if_no_cuda
-def test_tiles_split_merge_cuda():
+@pytest.mark.parametrize(
+    "crop_border",
+    [0, 16, 60]
+)
+def test_tiles_split_merge_cuda(crop_border):
     class MaxChannelIntensity(nn.Module):
         def __init__(self):
             super().__init__()
@@ -144,7 +152,7 @@ def test_tiles_split_merge_cuda():
 
     model = MaxChannelIntensity().eval().cuda()
 
-    merger = CudaTileMerger(tiler.target_shape, 1, tiler.weight)
+    merger = CudaTileMerger(tiler.target_shape, 1, tiler.weight, crop_border=crop_border)
     for tiles_batch, coords_batch in DataLoader(list(zip(tiles, tiler.crops)), batch_size=8, pin_memory=True):
         tiles_batch = tiles_batch.float().cuda()
         pred_batch = model(tiles_batch)

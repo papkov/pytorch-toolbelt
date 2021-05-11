@@ -299,10 +299,12 @@ class ImageSlicer:
         )
         return target_shape
 
-    def merge(self, tiles: List[Array], dtype=np.float32) -> Array:
+    def merge(self, tiles: List[Array], dtype=np.float32, crop_border: int = 0) -> Array:
         """
         Merge tiles to the original shape
         """
+        if crop_border > np.min([self.margin_start, self.margin_end]):
+            raise ValueError
         if len(tiles) != len(self.crops):
             raise ValueError
 
@@ -315,10 +317,11 @@ class ImageSlicer:
 
         w = np.stack([self.weight] * channels, axis=-1)
 
+        tile_slice = tuple(slice(crop_border, ts - crop_border) for ts in self.tile_size)
         for tile, crop in zip(tiles, self.crops):
-            image_slice = tuple(slice(x, x + ts) for x, ts in zip(crop, self.tile_size))
-            image[image_slice] += tile * w
-            norm_mask[image_slice] += w
+            image_slice = tuple(slice(x + crop_border, x + ts - crop_border) for x, ts in zip(crop, self.tile_size))
+            image[image_slice] += tile[tile_slice] * w[tile_slice]
+            norm_mask[image_slice] += w[tile_slice]
 
         # TODO is clip necessary with uint?
         norm_mask = np.clip(norm_mask, a_min=0, a_max=None)
@@ -377,7 +380,13 @@ class TileMerger:
     """
 
     def __init__(
-        self, image_shape: Tuple[int, ...], channels: int, weight: Array, device="cpu", default_value: float = -99.0
+        self, 
+        image_shape: Tuple[int, ...], 
+        channels: int,
+        weight: Array,
+        device="cpu",
+        default_value: float = -99.0,
+        crop_border: int = 0,
     ):
         """
         :param image_shape: Shape of the source image
@@ -387,12 +396,16 @@ class TileMerger:
         :param default_value: Negative value to fill image by default
                               in case we predict only some tiles ond need zeros
                               for other areas in final prediction
+        :param crop_border: how many pixels to crop from the border before merging
+                            (might help with severe edge effects) 
         """
         self.image_shape = image_shape
         self.image_height = image_shape[0]
         self.image_width = image_shape[1]
         self.channels = channels
         self.default_value = default_value
+        # TODO assert crop_border < margin
+        self.crop_border = crop_border
 
         # Make weight and norm_mask uint8 for memory efficiency
         self.weight = torch.from_numpy(np.expand_dims(weight, axis=0)).to(device).type(torch.uint8)
@@ -409,14 +422,15 @@ class TileMerger:
         # x, y, tile_width, tile_height = coords
 
         # Replace default (large negative) value with zero to add predictions
-        image_slice = (slice(None),) + tuple(slice(x, x + ts) for x, ts in zip(coords, tile.shape[1:]))
+        image_slice = (slice(None),) + tuple(slice(x + self.crop_border, x + ts - self.crop_border) for x, ts in zip(coords, tile.shape[1:]))
+        tile_slice = (slice(None),) + tuple(slice(self.crop_border, ts - self.crop_border) for ts in tile.shape[1:])
         self.image[image_slice] = torch.where(
             self.image[image_slice] == self.default_value,
             torch.tensor(0.0).float().to(self.image.device),
             self.image[image_slice],
         )
-        self.image[image_slice] += tile * self.weight
-        self.norm_mask[image_slice] += self.weight
+        self.image[image_slice] += tile[tile_slice] * self.weight[tile_slice]
+        self.norm_mask[image_slice] += self.weight[tile_slice]
 
     def integrate_batch(self, batch: Tensor, crop_coords: Array) -> None:
         """
@@ -455,5 +469,5 @@ class TileMerger:
 
 @pytorch_toolbelt_deprecated("This class is deprecated and will be removed in 0.5.0. Please use TileMerger instead.")
 class CudaTileMerger(TileMerger):
-    def __init__(self, image_shape, channels, weight, device="cuda"):
-        super().__init__(image_shape, channels, weight, device)
+    def __init__(self, image_shape, channels, weight, device="cuda", default_value=-99, crop_border=0):
+        super().__init__(image_shape, channels, weight, device, default_value=default_value, crop_border=crop_border)
