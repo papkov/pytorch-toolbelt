@@ -177,6 +177,7 @@ def d4_image2label(model: nn.Module, image: Tensor) -> Tensor:
     :return: Arithmetically averaged predictions
     """
     output = d4_labels_deaugment(model(d4_image_augment(image)))
+    return output
 
 
 def d4_image2mask(model: nn.Module, image: Tensor) -> Tensor:
